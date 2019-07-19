@@ -8,7 +8,6 @@ with open("README.md","r") as fh:
 
 setuptools.setup(
     name="aarchiba_tools",
-    version="0.1",
     author="Anne Archibald",
     author_email="peridot.faceted@gmail.com",
     description="Convenient python (3) tools I often use",
@@ -25,4 +24,6 @@ setuptools.setup(
     ],
     install_requires=['numpy'],
     include_package_data=True,
+    setup_requires=['setuptools_scm'],
+    use_scm_version=True,
 )

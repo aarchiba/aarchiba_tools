@@ -1,3 +1,0 @@
-graft src
-include tox.ini
-include LICENSE.txt

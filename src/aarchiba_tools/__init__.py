@@ -2,6 +2,12 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+from pkg_resources import get_distribution, DistributionNotFound
+try:
+    __version__ = get_distribution(__name__).version
+except DistributionNotFound:
+    # package is not installed
+    pass
 
 
 def downsample(a, factor, axis=-1, func=np.mean):
