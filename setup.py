@@ -22,7 +22,7 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    install_requires=['numpy'],
+    install_requires=['numpy','six'],
     include_package_data=True,
     setup_requires=['setuptools_scm'],
     use_scm_version=True,
