@@ -3,7 +3,7 @@
 
 import setuptools
 
-with open("README.md","r") as fh:
+with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
@@ -15,15 +15,15 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/aarchiba/aarchiba_tools",
     packages=setuptools.find_packages("src"),
-    package_dir={'': 'src'},
-    keywords=['personal'],
+    package_dir={"": "src"},
+    keywords=["personal"],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    install_requires=['numpy','six'],
+    install_requires=["numpy", "six"],
     include_package_data=True,
-    setup_requires=['setuptools_scm'],
+    setup_requires=["setuptools_scm"],
     use_scm_version=True,
 )

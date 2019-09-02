@@ -2,17 +2,19 @@
 # -*- coding: utf-8 -*-
 
 import os
-from six import string_types, PY3
 from logging import info, debug
 import time
 
+from six import string_types, PY3
 import numpy as np
 from pkg_resources import get_distribution, DistributionNotFound
+
 try:
     __version__ = get_distribution(__name__).version
 except DistributionNotFound:
     # package is not installed
     pass
+
 
 def downsample(a, factor, axis=-1, func=np.mean):
     """Return the original array downsampled along a particular axis.
@@ -43,19 +45,19 @@ def downsample(a, factor, axis=-1, func=np.mean):
     """
     a = np.asanyarray(a)
     s = np.shape(a)
-    if axis<0:
+    if axis < 0:
         axis += len(s)
-    if axis<0 or axis>=len(s):
+    if axis < 0 or axis >= len(s):
         raise ValueError("Input array has only %d dimensions" % len(s))
-    if factor<=0:
+    if factor <= 0:
         raise ValueError("Cannot downsample array by factor %s" % factor)
     n = s[axis]
-    if n%factor != 0:
-        raise ValueError("Axis length %d not divisible by factor %d"
-                             % (n,factor))
-    ns = s[:axis]+(n//factor,factor)+s[axis+1:]
-    ar = np.reshape(a,ns)
-    return func(ar, axis=axis+1)
+    if n % factor != 0:
+        raise ValueError("Axis length %d not divisible by factor %d" % (n, factor))
+    ns = s[:axis] + (n // factor, factor) + s[axis + 1 :]
+    ar = np.reshape(a, ns)
+    return func(ar, axis=axis + 1)
+
 
 def logspace_exp(start, stop, num=50, endpoint=True):
     """Return logarithmically spaced values between the endpoints.
@@ -80,26 +82,30 @@ def logspace_exp(start, stop, num=50, endpoint=True):
 
     Results will always be of dtype float.
     """
-    if start==0 or stop==0:
+    if start == 0 or stop == 0:
         raise ValueError("start and stop values must be nonzero")
-    if start<0:
+    if start < 0:
         s = -1
         start = -start
         stop = -stop
     else:
         s = 1
-    if stop<0:
+    if stop < 0:
         raise ValueError("start and stop values must have the same sign")
 
-    return s*np.exp(np.linspace(np.log(start), np.log(stop),
-                            num=num, endpoint=endpoint, dtype=float))
+    return s * np.exp(
+        np.linspace(
+            np.log(start), np.log(stop), num=num, endpoint=endpoint, dtype=float
+        )
+    )
 
 
 def ensure_list(l):
     """Allow a single string or integer to be treated like a one-element list"""
-    if isinstance(l,string_types) or isinstance(l,int):
+    if isinstance(l, string_types) or isinstance(l, int):
         l = [l]
     return l
+
 
 def need_rerun(inputs, outputs):
     """Examine inputs and outputs and return whether a command should be rerun.
@@ -123,7 +129,7 @@ def need_rerun(inputs, outputs):
     inputs = ensure_list(inputs)
     outputs = ensure_list(outputs)
 
-    if len(outputs)==0:
+    if len(outputs) == 0:
         raise ValueError("No outputs specified")
 
     io = inputs
@@ -143,19 +149,24 @@ def need_rerun(inputs, outputs):
             info("Output %s missing" % o)
             return True
         ot = os.path.getmtime(o)
-        if ot<oldest_out:
+        if ot < oldest_out:
             oldest_out = ot
             oldest_out_name = o
 
     for i in inputs:
         if os.path.getmtime(i) > oldest_out:
-            info("Input %s newer than %s" % (i,oldest_out_name))
-            debug("%s > %s" %
-                      (time.ctime(os.path.getmtime(i)),
-                        time.ctime(os.path.getmtime(oldest_out_name))))
+            info("Input %s newer than %s" % (i, oldest_out_name))
+            debug(
+                "%s > %s"
+                % (
+                    time.ctime(os.path.getmtime(i)),
+                    time.ctime(os.path.getmtime(oldest_out_name)),
+                )
+            )
             return True
 
     return False
+
 
 def write_file_if_changed(fname, s):
     """Write the string s to the file fname but only if it's different
@@ -165,12 +176,12 @@ def write_file_if_changed(fname, s):
     This ensures that modification dates don't get updated unnecessarily.
     """
 
-    if PY3 and isinstance(s,str):
+    if PY3 and isinstance(s, str):
         rmode = "rt"
         wmode = "wt"
     else:
         rmode = "rb"
         wmode = "wb"
-    if not os.path.exists(fname) or open(fname,rmode).read() != s:
+    if not os.path.exists(fname) or open(fname, rmode).read() != s:
         with open(fname, wmode) as f:
             f.write(s)

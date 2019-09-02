@@ -10,3 +10,5 @@ The source distribution can be tested with `tox`; simply run it from the same di
 
 Development work can most easily be done from an editable pip install (`pip install -e .`) in a suitable virtualenv.
 
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
+
