@@ -5,13 +5,21 @@ import collections
 from logging import info, debug
 import os
 import time
+import warnings
 
-import astroplan
 import astropy.coordinates
 import astropy.units as u
+from astropy.utils.exceptions import AstropyDeprecationWarning
 import numpy as np
 from pkg_resources import get_distribution, DistributionNotFound
 from six import string_types, PY3
+
+with warnings.catch_warnings():
+    # warnings.simplefilter("ignore")
+    warnings.filterwarnings(
+        "ignore", r".*astropy\.extern\.six.*", AstropyDeprecationWarning
+    )
+    import astroplan
 
 try:
     __version__ = get_distribution(__name__).version
@@ -204,6 +212,9 @@ def write_file_if_changed(fname, s):
 observatories = None
 
 
+observatory_aliases = None
+
+
 def observatory_location(tempo2_name):
     """Obtain an astropy EarthLocation for an observatory
 
@@ -212,9 +223,10 @@ def observatory_location(tempo2_name):
     try `astropy.coordinates.EarthLocation.of_site()` or even `.of_address()`
     if you're feeling lucky.
     """
-    global observatories
+    global observatories, observatory_aliases
     if observatories is None:
         observatories = {}
+        observatory_aliases = {}
         for l in open(
             os.path.join(os.path.dirname(__file__), "observatories.dat"), "rt"
         ).readlines():
@@ -225,10 +237,13 @@ def observatory_location(tempo2_name):
             if len(ls) < 4:
                 raise ValueError("Mysterious line {!r} in observatories.dat".format(l))
             xyz = [float(s) * u.m for s in ls[:3]]
+            name = ls[3].lower()
+            observatories[name] = astropy.coordinates.EarthLocation.from_geocentric(
+                *xyz
+            )
             aliases = ls[3:]
-            L = astropy.coordinates.EarthLocation.from_geocentric(*xyz)
             for a in aliases:
-                observatories[a.lower()] = L
+                observatory_aliases[a.lower()] = name
         for l in open(
             os.path.join(os.path.dirname(__file__), "aliases"), "rt"
         ).readlines():
@@ -238,11 +253,11 @@ def observatory_location(tempo2_name):
             ls = l.split()
             if len(ls) < 2:
                 raise ValueError("Mysterious line {!r} in aliases".format(l))
-            L = observatories[ls[0].lower()]
+            name = observatory_aliases[ls[0].lower()]
             for a in ls[1:]:
-                observatories[a.lower()] = L
+                observatory_aliases[a.lower()] = name
     try:
-        return observatories[tempo2_name.lower()]
+        return observatories[observatory_aliases[tempo2_name.lower()]]
     except KeyError:
         raise KeyError("Observatory {!r} not known to tempo2".format(tempo2_name))
 
@@ -261,7 +276,10 @@ def format_sidereal_time(t):
 _rise_set = collections.namedtuple("Times", ["rise", "set"])
 
 
-def rise_set(source, observatory, elevation_limit=5.5 * u.deg, when=None, lst=False):
+known_elevation_limits = {"gbt": 5.5 * u.deg, "arecibo": 69.0 * u.deg}
+
+
+def rise_set(source, observatory, elevation_limit=None, when=None, lst=False):
     """Rise and set times for a source"""
     if isinstance(source, astroplan.FixedTarget):
         S = source
@@ -276,11 +294,18 @@ def rise_set(source, observatory, elevation_limit=5.5 * u.deg, when=None, lst=Fa
     else:
         try:
             L = astroplan.Observer(observatory_location(observatory))
+            if elevation_limit is None:
+                elevation_limit = known_elevation_limits.get(
+                    observatory_aliases[observatory.lower()], None
+                )
         except ValueError:
             try:
                 L = astroplan.Observer.from_site(observatory)
             except ValueError:
                 raise ValueError("Observatory {!r} not found".format(observatory))
+    if elevation_limit is None:
+        elevation_limit = 0 * u.deg
+
     if when is None:
         T = astropy.time.Time.now()
     elif isinstance(when, astropy.time.Time):

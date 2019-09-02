@@ -2,6 +2,8 @@ import argparse
 
 import astropy.time
 import astropy.units as u
+import astroplan
+
 
 import aarchiba_tools
 
@@ -18,13 +20,14 @@ def main():
         "--mjd", type=float, help="MJD when the rise and set are wanted (default now)"
     )
     parser.add_argument(
-        "--elevation_limit",
-        type=float,
-        default=5.5,
-        help="Elevation at which the source sets",
+        "--elevation_limit", type=float, help="Elevation at which the source sets"
     )
     parser.add_argument("--lst", action="store_true", help="Give results in LST form")
     args = parser.parse_args()
+
+    el = args.elevation_limit
+    if el is not None:
+        el *= u.deg
 
     if args.mjd is None:
         mjd = None
@@ -34,7 +37,7 @@ def main():
         source=args.source,
         observatory=args.observatory,
         when=mjd,
-        elevation_limit=args.elevation_limit * u.deg,
+        elevation_limit=el,
         lst=args.lst,
     )
     if args.lst:
