@@ -26,4 +26,5 @@ setuptools.setup(
     include_package_data=True,
     setup_requires=["setuptools_scm"],
     use_scm_version=True,
+    entry_points={"console_scripts": ["risenset=aarchiba_tools.risenset:main"]},
 )
