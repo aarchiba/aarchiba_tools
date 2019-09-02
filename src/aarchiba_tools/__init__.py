@@ -1,19 +1,33 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os
+import collections
 from logging import info, debug
+import os
 import time
 
-from six import string_types, PY3
+import astroplan
+import astropy.coordinates
+import astropy.units as u
 import numpy as np
 from pkg_resources import get_distribution, DistributionNotFound
+from six import string_types, PY3
 
 try:
     __version__ = get_distribution(__name__).version
 except DistributionNotFound:
     # package is not installed
     pass
+
+__all__ = [
+    "downsample",
+    "logspace_exp",
+    "ensure_list",
+    "need_rerun",
+    "write_file_if_changed",
+    "observatories",
+    "rise_set",
+]
 
 
 def downsample(a, factor, axis=-1, func=np.mean):
@@ -185,3 +199,108 @@ def write_file_if_changed(fname, s):
     if not os.path.exists(fname) or open(fname, rmode).read() != s:
         with open(fname, wmode) as f:
             f.write(s)
+
+
+observatories = None
+
+
+def observatory_location(tempo2_name):
+    """Obtain an astropy EarthLocation for an observatory
+
+    This works for observatories in a stored version of `observatories.dat`,
+    and their aliases (from a stored version of `aliases`). You might also
+    try `astropy.coordinates.EarthLocation.of_site()` or even `.of_address()`
+    if you're feeling lucky.
+    """
+    global observatories
+    if observatories is None:
+        observatories = {}
+        for l in open(
+            os.path.join(os.path.dirname(__file__), "observatories.dat"), "rt"
+        ).readlines():
+            l = l.strip()
+            if not l or l.startswith("#"):
+                continue
+            ls = l.split()
+            if len(ls) < 4:
+                raise ValueError("Mysterious line {!r} in observatories.dat".format(l))
+            xyz = [float(s) * u.m for s in ls[:3]]
+            aliases = ls[3:]
+            L = astropy.coordinates.EarthLocation.from_geocentric(*xyz)
+            for a in aliases:
+                observatories[a.lower()] = L
+        for l in open(
+            os.path.join(os.path.dirname(__file__), "aliases"), "rt"
+        ).readlines():
+            l = l.strip()
+            if not l or l.startswith("#"):
+                continue
+            ls = l.split()
+            if len(ls) < 2:
+                raise ValueError("Mysterious line {!r} in aliases".format(l))
+            L = observatories[ls[0].lower()]
+            for a in ls[1:]:
+                observatories[a.lower()] = L
+    try:
+        return observatories[tempo2_name.lower()]
+    except KeyError:
+        raise KeyError("Observatory {!r} not known to tempo2".format(tempo2_name))
+
+
+def format_sidereal_time(t):
+    # t = t.copy()
+    # t.wrap_angle = 360*u.deg
+    h = t.to(u.hourangle).value
+    if h < 0:
+        raise ValueError("Received negative hour angle {!r}".format(t))
+    h, m = np.floor(h), (h % 1) * 60
+    m, s = np.floor(m), (m % 1) * 60
+    return "{:02d}:{:02d}:{:04.1f}".format(int(h), int(m), s)
+
+
+_rise_set = collections.namedtuple("Times", ["rise", "set"])
+
+
+def rise_set(source, observatory, elevation_limit=5.5 * u.deg, when=None, lst=False):
+    """Rise and set times for a source"""
+    if isinstance(source, astroplan.FixedTarget):
+        S = source
+    elif isinstance(source, astropy.coordinates.SkyCoord):
+        S = astroplan.FixedTarget(source)
+    else:
+        S = astroplan.FixedTarget.from_name(source)
+    if isinstance(observatory, astroplan.Observer):
+        L = observatory
+    elif isinstance(observatory, astropy.coordinates.EarthLocation):
+        L = astroplan.Observer(observatory)
+    else:
+        try:
+            L = astroplan.Observer(observatory_location(observatory))
+        except ValueError:
+            try:
+                L = astroplan.Observer.from_site(observatory)
+            except ValueError:
+                raise ValueError("Observatory {!r} not found".format(observatory))
+    if when is None:
+        T = astropy.time.Time.now()
+    elif isinstance(when, astropy.time.Time):
+        T = when
+    else:
+        T = astropy.time.Time(when)
+
+    if L.target_is_up(T, S, horizon=elevation_limit):
+        rise = L.target_rise_time(T, S, which="previous", horizon=elevation_limit)
+    else:
+        rise = L.target_rise_time(T, S, which="next", horizon=elevation_limit)
+    set = L.target_set_time(rise, S, which="next", horizon=elevation_limit)
+    rise.location = L.location
+    set.location = L.location
+    rise.format = "iso"
+    set.format = "iso"
+    if lst:
+        return _rise_set(
+            rise=format_sidereal_time(rise.sidereal_time("apparent")),
+            set=format_sidereal_time(set.sidereal_time("apparent")),
+        )
+    else:
+        return _rise_set(rise=rise, set=set)
