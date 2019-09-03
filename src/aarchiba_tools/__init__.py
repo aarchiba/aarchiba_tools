@@ -4,6 +4,7 @@
 import collections
 from logging import info, debug
 import os
+from os.path import join, dirname
 import time
 import warnings
 
@@ -158,7 +159,7 @@ def need_rerun(inputs, outputs):
     inputs = []
     for i in io:
         if i.startswith("@"):
-            for l in open(i[1:]).readlines():
+            for l in open(i[1:], "rt"):
                 inputs.append(l.strip())
         else:
             inputs.append(i)
@@ -227,9 +228,7 @@ def observatory_location(tempo2_name):
     if observatories is None:
         observatories = {}
         observatory_aliases = {}
-        for l in open(
-            os.path.join(os.path.dirname(__file__), "observatories.dat"), "rt"
-        ).readlines():
+        for l in open(join(dirname(__file__), "observatories.dat"), "rt"):
             l = l.strip()
             if not l or l.startswith("#"):
                 continue
@@ -244,9 +243,7 @@ def observatory_location(tempo2_name):
             aliases = ls[3:]
             for a in aliases:
                 observatory_aliases[a.lower()] = name
-        for l in open(
-            os.path.join(os.path.dirname(__file__), "aliases"), "rt"
-        ).readlines():
+        for l in open(join(dirname(__file__), "aliases"), "rt"):
             l = l.strip()
             if not l or l.startswith("#"):
                 continue
