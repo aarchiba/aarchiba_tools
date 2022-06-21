@@ -4,7 +4,7 @@ attrs==19.1.0
 filelock==3.0.12
 importlib-metadata==0.18
 more-itertools==7.1.0
-numpy==1.16.4
+numpy==1.22.0
 packaging==19.0
 pkg-resources==0.0.0
 pluggy==0.12.0
